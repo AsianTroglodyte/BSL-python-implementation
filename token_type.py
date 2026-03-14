@@ -13,17 +13,17 @@ class TokenType(Enum):
     LEFT_BRACK = 5
     RIGHT_BRACK = 6
     COMMA = 7
-    POUND = 8
-    SEMICOLON = 9
-    BACK_TICK = 10
+    SEMICOLON = 8
+    BACK_TICK = 9
 
     # Literals.
-    IDENTIFIER = 9
-    STRING = 10
-    NUMBER = 11
+    IDENTIFIER = 10
+    STRING = 11
+    NUMBER = 12
+    BOOLEAN = 13
 
     # Keywords.
-    IF = 12
-    COND = 13
+    IF = 14
+    COND = 15
 
-    EOF = 14
+    EOF = 16

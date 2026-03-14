@@ -2,7 +2,7 @@
 from token_type import TokenType
 
 
-class Token:
+class BslToken:
     """Implements Token Class."""
 
     def __init__(self,

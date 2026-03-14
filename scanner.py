@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from typing import List
-from token import Token
 from token_type import TokenType
+from bsl_token import BslToken
 
 
 class Scanner:
@@ -13,20 +13,19 @@ class Scanner:
         Token list is initialized automatically.
         """
         self.source = source
-        self.tokens: List(Token) = []
+        self.tokens: List(BslToken) = []
         self.start = 0
         self.current = 0
-        self.line = 0
+        self.line = 1
         self.error_reporter = error_reporter
 
     def scan_tokens(self):
         """Start a scan on the source code given to the Scanner."""
-        while not (self.is_at_end()):
+        while not self.is_at_end():
             self.start = self.current
             self.scan_token()
-            print("after scan_token()")
 
-        self.tokens.append(Token(TokenType.EOF, "", None, self.line))
+        self.tokens.append(BslToken(TokenType.EOF, "", None, self.line))
 
     def is_at_end(self) -> bool:
         """Check if scanner is at the end of source."""
@@ -37,50 +36,78 @@ class Scanner:
         c = self.advance()
         match c:
             case '(':
-                self.add_token(TokenType.LEFT_PAREN, c)
+                self.add_non_literal_token(TokenType.LEFT_PAREN)
             case ')':
-                self.add_token(TokenType.RIGHT_PAREN, c)
+                self.add_non_literal_token(TokenType.RIGHT_PAREN)
             case '[':
-                self.add_token(TokenType.LEFT_BRACK, c)
+                self.add_non_literal_token(TokenType.LEFT_BRACK)
             case ']':
-                self.add_token(TokenType.RIGHT_BRACK, c)
+                self.add_non_literal_token(TokenType.RIGHT_BRACK)
             case '{':
-                self.add_token(TokenType.RIGHT_BRACE, c)
+                self.add_non_literal_token(TokenType.RIGHT_BRACE)
             case '}':
-                self.add_token(TokenType.LEFT_BRACE, c)
+                self.add_non_literal_token(TokenType.LEFT_BRACE)
             case ',':
-                self.add_token(TokenType.COMMA, c)
-            case '#':
-                self.add_token(TokenType.POUND, c)
+                self.add_non_literal_token(TokenType.COMMA)
             case ';':
-                self.add_token(TokenType.SEMICOLON, c)
+                self.add_non_literal_token(TokenType.SEMICOLON)
             case '`':
-                self.add_token(TokenType.BACK_TICK, c)
+                self.add_non_literal_token(TokenType.BACK_TICK)
             case '"':
                 self.string()
-            # case '\n':
-            #     self.line += 1
-            # case " ":
-            #     return
-            # case _:
-            #     self.error_reporter.error(self.line, "Unexpected character.")
+            case '\n':
+                self.line += 1
+            case '#':
+                self.boolean()
+            case _:
+                while (self.is_valid_id_char(self.peek()) and
+                       (not self.is_at_end())):
+                    self.advance()
+
+                text = self.source[self.start: self.current]
+
+                # check if text is a number
+                encountered_decimal = False
+                is_identifier = False
+                for char in text:
+                    if char.isdigit():
+                        continue
+                    elif char == ".":
+                        if not encountered_decimal:
+                            encountered_decimal = True
+                        elif encountered_decimal:
+                            is_identifier = True
+                            break
+                    else:
+                        is_identifier = True
+                        break
+
+                if is_identifier:
+                    self.add_non_literal_token(TokenType.IDENTIFIER)
+                elif not is_identifier:
+                    self.add_literal_token(TokenType.NUMBER, float(text))
+
+                # self.error_reporter.error(self.line, "Unexpected character.")
 
     def advance(self) -> str:
         """Advance the scanner and return the consumed chararacter."""
         consumed_character = self.source[self.current]
-        print(f"consumed_character {consumed_character}")
+
         self.current += 1
         return consumed_character
 
-    def add_token(self, type: TokenType, literal: object):
-        """Add a token given a TokenType and literal object."""
+    def add_non_literal_token(self, type: TokenType):
+        """Add a non-literal token given a TokenType and."""
+        self.add_literal_token(type, None)
+
+    def add_literal_token(self, type: TokenType, literal: object):
+        """Add a token for a literal given a TokenType and a literal object."""
         text = self.source[self.start: self.current]
-        self.tokens.append(Token(type, text, literal, self.line))
-        print("add_token")
+        self.tokens.append(BslToken(type, text, literal, self.line))
 
     def string(self):
         """Obtain the string starting from the scanner's current position."""
-        while not (self.peek() != '"' and (not self.is_at_end())):
+        while (self.peek() != '"' and (not self.is_at_end())):
             if self.peek() == '\n':
                 self.line += 1
             self.advance()
@@ -91,9 +118,39 @@ class Scanner:
 
         self.advance()
 
+        value = self.source[self.start + 1: self.current - 1]
+
+        self.add_literal_token(TokenType.STRING, value)
+
+    def number(self):
+        """Obtain the number from the scanner's urrent position."""
+        while (self.peek().isdigit() and (not self.is_at_end())):
+            self.advance()
+
+        if (self.peek() == '.' and self.peek().isdigit()):
+            self.advance()
+
         value = self.source[self.start: self.current]
 
-        return value
+        self.add_literal_token(TokenType.NUMBER, value)
+
+    def boolean(self):
+        while self.peek().isalnum():
+            self.advance()
+
+        text = self.source[self.start: self.current]
+
+        if text == "#true":
+            self.add_literal_token(TokenType.BOOLEAN, text)
+        elif text == "#false":
+            self.add_non_literal_token(TokenType.Identifier, text)
+        else:
+            self.error_reporter.error(
+                self.line,
+                "identifiers cannot start with '#'")
+
+    def is_valid_id_char(self, c):
+        return (not c.isspace()) and (c not in '",\'`()[]{}|;#')
 
     def peek(self):
         """Look one character ahead without consuming the character."""
@@ -114,12 +171,13 @@ class Scanner:
 
 
 if __name__ == '__main__':
+    print("start")
     from error_reporter import ErrorReporter
 
     error_reporter = ErrorReporter()
-    scanner = Scanner("(){}[],#;`\"bruh\"", error_reporter)
+    scanner = Scanner("(){}[],#;`\"bruh\"\n123 bruh", error_reporter)
     scanner.scan_tokens()
 
-    # for token in scanner.tokens:
-    #     print(f"token: {token.to_string()}")
-    # print("bruh2")
+    for token in scanner.tokens:
+        print(f"token: {token.to_string()}")
+    print("end")
