@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from typing import List
-from token_type import TokenType
-from bsl_token import BslToken
+from .token_type import TokenType
+from .bsl_token import BslToken
 
 
 class Scanner:
@@ -13,7 +13,7 @@ class Scanner:
         Token list is initialized automatically.
         """
         self.source = source
-        self.tokens: List(BslToken) = []
+        self.tokens: List[BslToken] = []
         self.start = 0
         self.current = 0
         self.line = 1
@@ -44,9 +44,9 @@ class Scanner:
             case ']':
                 self.add_non_literal_token(TokenType.RIGHT_BRACK)
             case '{':
-                self.add_non_literal_token(TokenType.RIGHT_BRACE)
-            case '}':
                 self.add_non_literal_token(TokenType.LEFT_BRACE)
+            case '}':
+                self.add_non_literal_token(TokenType.RIGHT_BRACE)
             case ',':
                 self.add_non_literal_token(TokenType.COMMA)
             case ';':
@@ -57,35 +57,23 @@ class Scanner:
                 self.string()
             case '\n':
                 self.line += 1
+            case ' ' | '\r' | '\t':
+                pass
             case '#':
                 self.boolean()
             case _:
-                while (self.is_valid_id_char(self.peek()) and
-                       (not self.is_at_end())):
+                while ((not self.is_at_end()) and
+                       self.is_valid_id_char(self.peek())):
                     self.advance()
 
                 text = self.source[self.start: self.current]
 
-                # check if text is a number
-                encountered_decimal = False
-                is_identifier = False
-                for char in text:
-                    if char.isdigit():
-                        continue
-                    elif char == ".":
-                        if not encountered_decimal:
-                            encountered_decimal = True
-                        elif encountered_decimal:
-                            is_identifier = True
-                            break
-                    else:
-                        is_identifier = True
-                        break
+                is_number_literal = self.is_number_literal(text)
 
-                if is_identifier:
-                    self.add_non_literal_token(TokenType.IDENTIFIER)
-                elif not is_identifier:
+                if is_number_literal:
                     self.add_literal_token(TokenType.NUMBER, float(text))
+                elif not is_number_literal:
+                    self.add_non_literal_token(TokenType.IDENTIFIER)
 
                 # self.error_reporter.error(self.line, "Unexpected character.")
 
@@ -122,17 +110,19 @@ class Scanner:
 
         self.add_literal_token(TokenType.STRING, value)
 
-    def number(self):
-        """Obtain the number from the scanner's urrent position."""
-        while (self.peek().isdigit() and (not self.is_at_end())):
-            self.advance()
+    def is_number_literal(self, text):
+        """Check a if some text is a number."""
+        # check if text is a number
+        seen_dot = False
 
-        if (self.peek() == '.' and self.peek().isdigit()):
-            self.advance()
-
-        value = self.source[self.start: self.current]
-
-        self.add_literal_token(TokenType.NUMBER, value)
+        for char in text:
+            if char.isdigit():
+                continue
+            elif char == "." and not seen_dot:
+                seen_dot = True
+            else:
+                return False
+        return True
 
     def boolean(self):
         while self.peek().isalnum():
@@ -143,7 +133,7 @@ class Scanner:
         if text == "#true":
             self.add_literal_token(TokenType.BOOLEAN, text)
         elif text == "#false":
-            self.add_non_literal_token(TokenType.Identifier, text)
+            self.add_literal_token(TokenType.BOOLEAN, text)
         else:
             self.error_reporter.error(
                 self.line,
@@ -172,7 +162,7 @@ class Scanner:
 
 if __name__ == '__main__':
     print("start")
-    from error_reporter import ErrorReporter
+    from .error_reporter import ErrorReporter
 
     error_reporter = ErrorReporter()
     scanner = Scanner("(){}[],#;`\"bruh\"\n123 bruh", error_reporter)

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-from token_type import TokenType
+from .token_type import TokenType
+from dataclasses import dataclass
 
 
+@dataclass
 class BslToken:
     """Implements Token Class."""
 
@@ -19,17 +21,3 @@ class BslToken:
     def to_string(self) -> str:
         """Get the human-readable string representation of the token."""
         return f"{self.type} {self.lexeme} {self.literal}"
-
-
-# test_token = Token(TokenType.LEFT_PAREN, "(", None, 12)
-
-# test_token.to_string()
-# class Person:
-#     def __init__(self, name, age):
-#         self.name = name
-#         self.age = age
-#     def greet(self):
-#         print(f"Hello, my name is {self.name} and age {self.age}")
-
-# john = Person("John", 36)
-# john.greet()

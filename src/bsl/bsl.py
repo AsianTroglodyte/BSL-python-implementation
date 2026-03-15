@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 from typing import List
 import sys
-from scanner import Scanner
-from error_reporter import ErrorReporter
+from .scanner import Scanner
+from .error_reporter import ErrorReporter
 
 
 class Bsl:
@@ -31,14 +31,14 @@ class Bsl:
             print(f"file \"{file_name}\" was not found")
 
     def run_repl(self):
-        """Start up a REPL."""''
+        """Start up a REPL."""
         while True:
             user_input = input("> ")
 
             if (user_input == ""):
                 break
 
-            scanner = Scanner(user_input, self.error)
+            scanner = Scanner(user_input, self.error_reporter)
             scanner.scan_tokens()
 
 
