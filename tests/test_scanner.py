@@ -3,7 +3,6 @@ from bsl.token_type import TokenType
 from bsl.error_reporter import ErrorReporter
 from bsl.scanner import Scanner
 from bsl.bsl_token import BslToken
-import pytest
 
 
 # @pytest.fixture

@@ -4,6 +4,9 @@ from .token_type import TokenType
 from .bsl_token import BslToken
 from fractions import Fraction
 from decimal import Decimal
+import re
+
+REAL = r"(?:\d+(?:\.\d*)?|\.\d+)"
 
 class Scanner:
     """Create Object to scan source code."""
@@ -71,7 +74,6 @@ class Scanner:
 
                 if (self.is_number_literal(text)):
                     self.add_literal_token(TokenType.NUMBER, text)
-                    print("is number")
                     return
 
                 # if previous try blocks didn't work. Then text is identifier
@@ -93,15 +95,13 @@ class Scanner:
         text = self.source[self.start: self.current]
 
         if type == TokenType.NUMBER:
-            if self.is_real_number(text):
-                self.tokens.append(BslToken(type, text, Decimal(text), self.line))
-            elif self.is_fraction(text):
-                self.tokens.append(BslToken(type, text, Fraction(text), self.line))
-            elif self.is_scientific_notation(text):
-                self.tokens.append(BslToken(type, text, Decimal(text), self.line))
-            elif self.is_complex_number(text):
+            if self.is_complex_number(text):
                 text_replaced_j = text.replace("i", "j")
-                self.tokens.append(BslToken(type, text, complex(text_replaced_j), self.line))
+                self.tokens.append(
+                    BslToken(type, text, Complex(text_replaced_j), self.line))
+            else:
+                self.tokens.append(
+                    BslToken(type, text, Fraction(text), self.line))
             return
 
         self.tokens.append(BslToken(type, text, literal, self.line))
@@ -126,7 +126,6 @@ class Scanner:
     def is_number_literal(self, text):
         """Check if some text is a number."""
 
-        print("checking if literal")
         if (self.is_real_number(text)):
             return True
         elif (self.is_fraction(text)):
@@ -140,6 +139,16 @@ class Scanner:
 
     def is_real_number(self, text):
         """Check if some text is a decimal number."""
+
+        real_number = re.fullmatch(f"^{REAL}$", text, re.VERBOSE)
+
+        print(f"real_number: {real_number}")
+
+        if real_number is None:
+            return False
+        else:
+            return True
+
         # check if text is a number
         seen_dot = False
 
@@ -155,6 +164,13 @@ class Scanner:
 
     def is_fraction(self, text) -> bool:
         """Check if some text is a fraction number."""
+        fraction = re.fullmatch(r"^[+-]?(\d+)/(\d+)$", text)
+
+        # print(f"fraction: {fraction}")
+        if fraction is None:
+            return False
+        else:
+            True
 
         slash_index = text.find("/")
         if (slash_index == -1):
@@ -182,6 +198,13 @@ class Scanner:
         Attempt to parse number using scientific notation.
         Note that scientific notation counts as float in Python.
         """
+        scientific_notation = re.fullmatch(r"[0-9]+(\.[0-9]+)?[eE][+-]?[0-9]+", text)
+        # print(f"scientific_notation: {scientific_notation}")
+        if scientific_notation is None:
+            return False
+        else:
+            return True
+
         e_index = text.find("e")
         if (e_index == -1):
             return False
@@ -200,6 +223,15 @@ class Scanner:
         return True
 
     def is_complex_number(self, text) -> bool:
+        """Return true if text is a valid complex number."""
+
+        complex_number = re.fullmatch(rf"^[+-]?{REAL}[+-]{REAL}i$", text)
+
+        if complex_number is None:
+            return False
+        else:
+            return True
+
         plus_index = text.find("+")
         if (plus_index == -1):
             return False
@@ -257,13 +289,24 @@ class Scanner:
         self.current += 1
         return True
 
+# Complex object for literal, internal representation of value.
+class Complex:
+    def __init__(self, real_part: Fraction, imaginary_part: Fraction):
+        self.real_part = real_part
+        self.imaginary_part = imaginary_part
+
+    def to_string(self) -> str:
+        """Get the human-readable string representation of complex number."""
+        return f"{self.real_part}+{self.imaginary_part}i"
+
+
 
 if __name__ == '__main__':
     print("start")
     from .error_reporter import ErrorReporter
 
     error_reporter = ErrorReporter()
-    scanner = Scanner("12+10i", error_reporter)
+    scanner = Scanner("0.12 1/2 1.2e10 -.2+.2i", error_reporter)
     scanner.scan_tokens()
 
     for token in scanner.tokens:
