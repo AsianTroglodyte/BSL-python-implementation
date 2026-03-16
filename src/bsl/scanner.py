@@ -2,7 +2,8 @@
 from typing import List
 from .token_type import TokenType
 from .bsl_token import BslToken
-
+from fractions import Fraction
+from decimal import Decimal
 
 class Scanner:
     """Create Object to scan source code."""
@@ -68,14 +69,13 @@ class Scanner:
 
                 text = self.source[self.start: self.current]
 
-                is_number_literal = self.is_number_literal(text)
+                if (self.is_number_literal(text)):
+                    self.add_literal_token(TokenType.NUMBER, text)
+                    print("is number")
+                    return
 
-                if is_number_literal:
-                    self.add_literal_token(TokenType.NUMBER, float(text))
-                elif not is_number_literal:
-                    self.add_non_literal_token(TokenType.IDENTIFIER)
-
-                # self.error_reporter.error(self.line, "Unexpected character.")
+                # if previous try blocks didn't work. Then text is identifier
+                self.add_non_literal_token(TokenType.IDENTIFIER)
 
     def advance(self) -> str:
         """Advance the scanner and return the consumed chararacter."""
@@ -91,6 +91,19 @@ class Scanner:
     def add_literal_token(self, type: TokenType, literal: object):
         """Add a token for a literal given a TokenType and a literal object."""
         text = self.source[self.start: self.current]
+
+        if type == TokenType.NUMBER:
+            if self.is_real_number(text):
+                self.tokens.append(BslToken(type, text, Decimal(text), self.line))
+            elif self.is_fraction(text):
+                self.tokens.append(BslToken(type, text, Fraction(text), self.line))
+            elif self.is_scientific_notation(text):
+                self.tokens.append(BslToken(type, text, Decimal(text), self.line))
+            elif self.is_complex_number(text):
+                text_replaced_j = text.replace("i", "j")
+                self.tokens.append(BslToken(type, text, complex(text_replaced_j), self.line))
+            return
+
         self.tokens.append(BslToken(type, text, literal, self.line))
 
     def string(self):
@@ -111,7 +124,22 @@ class Scanner:
         self.add_literal_token(TokenType.STRING, value)
 
     def is_number_literal(self, text):
-        """Check a if some text is a number."""
+        """Check if some text is a number."""
+
+        print("checking if literal")
+        if (self.is_real_number(text)):
+            return True
+        elif (self.is_fraction(text)):
+            return True
+        elif (self.is_scientific_notation(text)):
+            return True
+        elif (self.is_complex_number(text)):
+            return True
+        else:
+            return False
+
+    def is_real_number(self, text):
+        """Check if some text is a decimal number."""
         # check if text is a number
         seen_dot = False
 
@@ -122,6 +150,76 @@ class Scanner:
                 seen_dot = True
             else:
                 return False
+
+        return True
+
+    def is_fraction(self, text) -> bool:
+        """Check if some text is a fraction number."""
+
+        slash_index = text.find("/")
+        if (slash_index == -1):
+            return False
+
+        numerator = text[:slash_index]
+
+        if not numerator.isdigit():
+            return False
+        else:
+            numerator = int(numerator)
+
+        denominator_index = slash_index + 1
+        denominator = text[denominator_index:]
+
+        if not denominator.isdigit():
+            return False
+        else:
+            denominator = int(denominator)
+
+        return True
+
+    def is_scientific_notation(self, text) -> bool:
+        """
+        Attempt to parse number using scientific notation.
+        Note that scientific notation counts as float in Python.
+        """
+        e_index = text.find("e")
+        if (e_index == -1):
+            return False
+
+        coefficient = text[:e_index]
+
+        if not self.is_real_number(text):
+            return False
+
+        exponent_index = e_index + 1
+        coefficient = text[exponent_index]
+
+        if not coefficient.isdigit():
+            return False
+
+        return True
+
+    def is_complex_number(self, text) -> bool:
+        plus_index = text.find("+")
+        if (plus_index == -1):
+            return False
+
+        real_number = text[:plus_index]
+
+        if not self.is_real_number(real_number) and not self.is_fraction(real_number):
+            return False
+
+        # last character must be i
+        if (text[len(text) - 1] != "i"):
+            return False
+
+        before_i_index = len(text) - 1
+        after_plus_index = plus_index + 1
+        second_real = text[after_plus_index: before_i_index]
+
+        if not self.is_real_number(second_real) and not self.is_fraction(second_real):
+            return False
+
         return True
 
     def boolean(self):
@@ -165,7 +263,7 @@ if __name__ == '__main__':
     from .error_reporter import ErrorReporter
 
     error_reporter = ErrorReporter()
-    scanner = Scanner("(){}[],#;`\"bruh\"\n123 bruh", error_reporter)
+    scanner = Scanner("12+10i", error_reporter)
     scanner.scan_tokens()
 
     for token in scanner.tokens:
