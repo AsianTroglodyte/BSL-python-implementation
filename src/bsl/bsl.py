@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 from typing import List
 import sys
-from .scanner import Scanner
-from .error_reporter import ErrorReporter
+from bsl.scanner import Scanner
+from bsl.error_reporter import ErrorReporter
 
 
 class Bsl:
