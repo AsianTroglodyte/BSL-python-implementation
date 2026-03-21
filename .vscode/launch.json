@@ -1,0 +1,96 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "BSL: Run package entrypoint",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "bsl",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "BSL: Debug scanner",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "bsl.scanner",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "BSL: Debug numbers",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "bsl.numbers",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "BSL: Debug regular_expressions",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "bsl.regular_expressions",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "BSL: Debug bsl",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "bsl.bsl",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "BSL: Debug bsl_token",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "bsl.bsl_token",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "BSL: Debug token_type",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "bsl.token_type",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "BSL: Debug error_reporter",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "bsl.error_reporter",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "console": "integratedTerminal"
+        }
+    ]
+}

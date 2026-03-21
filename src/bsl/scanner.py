@@ -6,10 +6,19 @@ from fractions import Fraction
 import re
 from .numbers import ScientificNotation
 from .numbers import Complex
-from .regular_expressions import REAL, FRACTION, EXACT_REAL
+from .regular_expressions import EXACT_REAL
+
 
 class Scanner:
     """Create Object to scan source code."""
+
+    source = ""
+    tokens: List[BslToken] = []
+    start = 0
+    current = 0
+    line = 1
+    error_reporter: object
+    had_error = False
 
     def __init__(self, source: str, error_reporter: object):
         """
@@ -117,7 +126,7 @@ class Scanner:
             if self.peek() == '\\':
                 self.advance()
                 escaped_char = self.peek()
-                # for info on BSL escape sequences, see 
+                # for info on BSL escape sequences, see
                 # https://docs.racket-lang.org/reference/reader.html#(part._parse-string)
                 match escaped_char:
                     case 'a':
@@ -125,7 +134,7 @@ class Scanner:
                     case 'b':
                         literal += '\b'
                     case 't':
-                        literal += '\t' 
+                        literal += '\t'
                     case 'n':
                         literal += '\n'
                     case 'v':
@@ -142,7 +151,7 @@ class Scanner:
                         literal += '"'
                     case 'n':
                         literal += '\n'
-                    # \<digit>{1,3} -> unicode octal number 1-3 digits
+                        # \<digit>{1,3} -> unicode octal number 1-3 digits
                     case escaped_char if self.is_octal(escaped_char):
                         literal += self.decode_numeric_escape(8, 3)
                         continue 
@@ -151,24 +160,26 @@ class Scanner:
                         self.advance()
                         literal += self.decode_numeric_escape(16, 2)
                         continue
-                    # \u<digit>{1,4} or surrogate pair u\<digit>{4,4}u\<digit>{4,4}
+                    # \u<digit>{1,4} or surrogate pair
+                    # u\<digit>{4,4}u\<digit>{4,4}
                     # https://en.wikipedia.org/wiki/UTF-16#U+D800_to_U+DFFF_(surrogates)
-                    # UTF-16 surrogate pair:
-                    # high in D800-DBFF, low in DC00-DFFF
-                    # codepoint = 0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00)
+                    # UTF-16 surrogate pair: high in D800-DBFF, low in DC00-DFFF
+                    # codepoint = 0x10000 + ((high - 0xD800) << 10) + (low -
+                    # 0xDC00)
                     case "u":
                         self.advance()
                         high_surrogate = self.decode_numeric_escape(16, 4)
                         high_surrogate_hex = ord(high_surrogate)
-                        
+
                         # check if value is a valid high surrogate
                         if not (0xD800 <= high_surrogate_hex <= 0xDBFF):
                             literal += high_surrogate
                             continue
 
-                        # if we get a high surrogate there MUST be a low surrogate DIRECTLY AFTER IT
-                        # that is also a hex number unicode hex number of 4 digits. 
-                        # otherwise, it's an error. Yes, this is how Racket/BSL does things.
+                        # if we get a high surrogate there MUST be a low
+                        # surrogate DIRECTLY AFTER IT that is also a hex number
+                        # unicode hex number of 4 digits. otherwise, it's an
+                        # error. Yes, this is how Racket/BSL does things.
                         if not self.peek() == '\\':
                             self.report_surrogate_error(high_surrogate)
                             return
@@ -184,7 +195,9 @@ class Scanner:
                         if not (0xDC00 <= low_surrogate_hex <= 0xDFFF):
                             self.report_surrogate_error(high_surrogate + low_surrogate)
                             return
-                        literal += chr(0x10000 + ((high_surrogate_hex - 0xD800) << 10) + (low_surrogate_hex - 0xDC00))
+                        literal += chr(0x10000 +
+                                       ((high_surrogate_hex - 0xD800) << 10) +
+                                       (low_surrogate_hex - 0xDC00))
                         continue
                     # \<digit>{1,8} -> unicode hex number 1-8 digits
                     case "U":
@@ -200,7 +213,7 @@ class Scanner:
                 break
             elif self.peek() == '\n':
                 self.line += 1
-            
+
             literal += self.peek()
             self.advance()
 
@@ -213,38 +226,37 @@ class Scanner:
 
         self.add_literal_token(TokenType.STRING, literal)
 
-    def is_number_literal(self, text):
+    def is_number_literal(self, text) -> bool:
         """Check if some text is a number."""
 
         return (self.is_real_number(text) or
-                self.is_fraction(text) or
+                # self.is_fraction(text) or
                 self.is_scientific_notation(text) or
                 self.is_complex_number(text))
 
-    def is_hex(self, text):
+    def is_hex(self, text) -> bool:
         """Check if some text is a valid hex number."""
-        return re.fullmatch(r"^[0-9a-fA-F]+$", text or "") is not None 
+        return re.fullmatch(r"^[0-9a-fA-F]+$", text or "") is not None
 
-    def is_octal(self, text):
+    def is_octal(self, text) -> bool:
         """Check if some text is a valid octal number."""
-        return re.fullmatch(r"^[0-7]+$", text or "") is not None 
+        return re.fullmatch(r"^[0-7]+$", text or "") is not None
 
-    def is_real_number(self, text):
+    # NOTE: this includes fractions, integers, and decimal numbers. EXACT_REAL
+    # is what enables this detection by being a combination of REAL and
+    # FRACTION.
+    def is_real_number(self, text) -> bool:
         """Check if some text is a decimal number."""
-        return re.fullmatch(f"^[+-]?{REAL}$", text, re.VERBOSE) is not None
-
-    def is_fraction(self, text) -> bool:
-        """Check if some text is a fraction number."""
-        return re.fullmatch(rf"^[+-]?{FRACTION}$", text) is not None
+        return re.fullmatch(f"^[+-]?{EXACT_REAL}$", text, re.VERBOSE) is not None
 
     def is_scientific_notation(self, text) -> bool:
         """Check if some text is a scientific notation number."""
-        return re.fullmatch(r"[0-9]+(\.[0-9]+)?[eE][+-]?[0-9]+", text) is not None
+        return re.fullmatch(rf"[+-]?{EXACT_REAL}[eE][+-]?[0-9]+", text) is not None
 
     def is_complex_number(self, text) -> bool:
         """Return true if text is a valid complex number."""
-        return re.fullmatch(rf"([+-]?{EXACT_REAL})([+-]{EXACT_REAL})i", text) is not None
-    
+        return re.fullmatch(rf"([+-]?({EXACT_REAL})?)([+-]({EXACT_REAL})?)i", text) is not None
+
     def report_surrogate_error(self, literal: str) -> None:
         """Report a surrogate error."""
         self.error_reporter.error(
@@ -276,11 +288,11 @@ class Scanner:
                 self.line,
                 "identifiers cannot start with '#'")
 
-    def is_valid_id_char(self, c):
+    def is_valid_id_char(self, c) -> bool:
         """Check if a character is a valid identifier character."""
         return (not c.isspace()) and (c not in '",\'`()[]{}|;#')
 
-    def peek(self):
+    def peek(self) -> str:
         """Look one character ahead without consuming the character."""
         return self.source[self.current] if not self.is_at_end() else '\0'
 
@@ -290,7 +302,6 @@ class Scanner:
             return False
         self.current += 1
         return True
-    
 
 
 if __name__ == '__main__':
@@ -298,20 +309,7 @@ if __name__ == '__main__':
     from .error_reporter import ErrorReporter
 
     # print("""  "\\""  """)
-    scanner = Scanner(""" 
-    "\\a"
-    "\\b"
-    "\\t"
-    "\\n"                 
-    "\\v"
-    "\\f"
-    "\\r"
-    "\\e"
-    "\\'"
-    "\\""
-    "\\n"
-    """,
-    ErrorReporter())
+    scanner = Scanner("""1.1.2 1..2""", ErrorReporter())
 
     scanner.scan_tokens()
 
