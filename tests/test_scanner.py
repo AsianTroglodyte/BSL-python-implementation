@@ -4,6 +4,7 @@ from bsl.error_reporter import ErrorReporter
 from bsl.scanner import Scanner
 from fractions import Fraction
 from bsl.numbers import Complex, ScientificNotation
+from bsl.bsl_token import BslToken
 import pytest
 
 
@@ -13,11 +14,14 @@ class RecordingErrorReporter:
     def __init__(self) -> None:
         self.errors: list[tuple[int, str]] = []
 
-    def error(self, line: int, message: str) -> None:
+    def error_line(self, line: int, message: str) -> None:
         self.errors.append((line, message))
 
     def report(self, line: int, where: str, message: str) -> None:
         self.errors.append((line, message))
+
+    def error_token(self, token: BslToken, message: str):
+        self.errors.append((token, message))
 
 
 def scan_single_lexeme(lexeme: str):
@@ -38,8 +42,8 @@ def scan_single_lexeme(lexeme: str):
     (",", TokenType.COMMA, ',', None, 1),
     (";", TokenType.SEMICOLON, ';', None, 1),
     ("`", TokenType.BACK_TICK, '`', None, 1),
-    ("#true", TokenType.BOOLEAN, '#true', True, 1),
-    ("#false", TokenType.BOOLEAN, '#false', False, 1),
+    ("#true", TokenType.TRUE, '#true', True, 1),
+    ("#false", TokenType.FALSE, '#false', False, 1),
     ("identifier", TokenType.IDENTIFIER, 'identifier', None, 1),
     ("123", TokenType.NUMBER, '123', Fraction("123"), 1),
     ('"strong"', TokenType.STRING, '"strong"', "strong", 1),
@@ -73,8 +77,8 @@ def test_multiple_lexemes():
         (TokenType.COMMA, ",", None, 2),
         (TokenType.SEMICOLON, ";", None, 2),
         (TokenType.BACK_TICK, "`", None, 2),
-        (TokenType.BOOLEAN, "#true", True, 2),
-        (TokenType.BOOLEAN, "#false", False, 2),
+        (TokenType.TRUE, "#true", True, 2),
+        (TokenType.FALSE, "#false", False, 2),
         (TokenType.IDENTIFIER, "identifier", None, 2),
         (TokenType.NUMBER, "123", Fraction("123"), 2),
         (TokenType.EOF, "", None, 3)
@@ -94,7 +98,7 @@ def test_multiple_lexemes():
             [
                 (TokenType.RIGHT_PAREN, ")", None, 1),
                 (TokenType.LEFT_PAREN, "(", None, 1),
-                (TokenType.BOOLEAN, "#true", True, 1),
+                (TokenType.TRUE, "#true", True, 1),
                 (TokenType.STRING, '"hi"', "hi", 1),
                 (TokenType.RIGHT_PAREN, ")", None, 1),
                 (TokenType.EOF, "", None, 1),
@@ -112,7 +116,7 @@ def test_multiple_lexemes():
             [
                 (TokenType.RIGHT_PAREN, ")", None, 1),
                 (TokenType.LEFT_PAREN, "(", None, 1),
-                (TokenType.BOOLEAN, "#true", True, 1),
+                (TokenType.TRUE, "#true", True, 1),
                 (TokenType.STRING, '"hi"', "hi", 1),
                 (TokenType.RIGHT_PAREN, ")", None, 1),
                 (TokenType.NUMBER, "123", Fraction("123"), 1),
@@ -123,7 +127,7 @@ def test_multiple_lexemes():
             "true#false",
             [
                 (TokenType.IDENTIFIER, "true", None, 1),
-                (TokenType.BOOLEAN, "#false", False, 1),
+                (TokenType.FALSE, "#false", False, 1),
                 (TokenType.EOF, "", None, 1),
             ],
         ),
@@ -541,7 +545,7 @@ def test_scan_integration_mixed_tokens():
     assert toks[3].type == TokenType.STRING and toks[3].lexeme == r'"\101"'
     assert toks[3].literal == "A"
 
-    assert toks[4].type == TokenType.BOOLEAN and toks[4].lexeme == "#false"
+    assert toks[4].type == TokenType.FALSE and toks[4].lexeme == "#false"
     assert toks[4].literal is False
 
     assert toks[5].type == TokenType.NUMBER and toks[5].lexeme == "3.14e-2"

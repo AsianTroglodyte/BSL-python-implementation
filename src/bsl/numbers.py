@@ -5,10 +5,12 @@ from .regular_expressions import EXACT_REAL, FRACTION
 
 
 class Complex:
+    """Class to represent the number in the scientific notation"""
     real_part: Fraction
     imaginary_part: Fraction
 
     def __init__(self, text: str):
+        """Instantiate a complex number."""
         complex_number = re.fullmatch(
             rf"([+-]?{EXACT_REAL})?([+-](?:{EXACT_REAL})?)i",
             text
@@ -38,17 +40,21 @@ class Complex:
         return f"{self.real_part}+{self.imaginary_part}i"
 
     def __str__(self):
+        """Get String representation of the data."""
         return f"{self.real_part}+{self.imaginary_part}i"
 
     def __repr__(self):
+        """Get the source representation of the data."""
         return f"{self.real_part}+{self.imaginary_part}i"
 
 
 class ScientificNotation:
+    """Class to represent the number in the scientific notation"""
     base: Fraction
     exponent: int
 
     def __init__(self, text: str):
+        """Initialize a number in the form of scientific notation."""
         scientific_notation = re.fullmatch(
             rf"([+-]?(?:{EXACT_REAL}|{FRACTION}))[eE]([+-]?\d+)",
             text
@@ -61,7 +67,9 @@ class ScientificNotation:
         return f"{self.base}e{self.exponent}"
 
     def __str__(self):
+        """Get the string representation of the data."""
         return f"{self.base}e{self.exponent}"
 
     def __repr__(self):
+        """Get the source representation of the data."""
         return f"{self.base}e{self.exponent}"

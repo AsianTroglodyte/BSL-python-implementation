@@ -20,10 +20,11 @@ class TokenType(Enum):
     IDENTIFIER = 10
     STRING = 11
     NUMBER = 12
-    BOOLEAN = 13
 
     # Keywords.
-    IF = 14
-    COND = 15
+    TRUE = 13
+    FALSE = 14
+    IF = 15
+    COND = 16
 
-    EOF = 16
+    EOF = 17

@@ -91,6 +91,28 @@
                 "PYTHONPATH": "${workspaceFolder}/src"
             },
             "console": "integratedTerminal"
+        },
+        {
+            "name": "BSL: Debug parser",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "bsl.parser",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "BSL: Debug ast_printer",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "bsl.ast_printer",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/src"
+            },
+            "console": "integratedTerminal"
         }
     ]
 }

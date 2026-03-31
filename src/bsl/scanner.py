@@ -21,6 +21,7 @@ class Scanner:
     had_error = False
 
     def __init__(self, source: str, error_reporter: object):
+
         """
         Initialize the scanner by passing source code.
         Token list is initialized automatically.
@@ -120,7 +121,6 @@ class Scanner:
 
     def string(self):
         """Obtain the string starting from the scanner's current position."""
-
         literal = ""
         while not self.is_at_end():
             if self.peek() == '\\':
@@ -205,7 +205,7 @@ class Scanner:
                         literal += self.decode_numeric_escape(16, 8)
                         continue
                     case _:
-                        self.error_reporter.error(self.line, "Invalid escape sequence.")
+                        self.error_reporter.error_line(self.line, "Invalid escape sequence.")
                         return
                 self.advance()
                 continue
@@ -218,7 +218,7 @@ class Scanner:
             self.advance()
 
         if self.is_at_end():
-            self.error_reporter.error(self.line, "Unterminated string.")
+            self.error_reporter.error_line(self.line, "Unterminated string.")
             return
 
         # advance to go past the closing double quote
@@ -228,7 +228,6 @@ class Scanner:
 
     def is_number_literal(self, text) -> bool:
         """Check if some text is a number."""
-
         return (self.is_real_number(text) or
                 # self.is_fraction(text) or
                 self.is_scientific_notation(text) or
@@ -259,7 +258,7 @@ class Scanner:
 
     def report_surrogate_error(self, literal: str) -> None:
         """Report a surrogate error."""
-        self.error_reporter.error(
+        self.error_reporter.error_line(
             self.line,
             "read-syntax: bad or incomplete surrogate-style encoding at `{literal}`")
 
@@ -274,17 +273,18 @@ class Scanner:
         return chr(int(hex_number, base)) if hex_number else ""
 
     def boolean(self):
+        """Check if source text is a boolean value."""
         while self.peek().isalnum():
             self.advance()
 
         text = self.source[self.start: self.current]
 
         if text == "#true":
-            self.add_literal_token(TokenType.BOOLEAN, True)
+            self.add_literal_token(TokenType.TRUE, True)
         elif text == "#false":
-            self.add_literal_token(TokenType.BOOLEAN, False)
+            self.add_literal_token(TokenType.FALSE, False)
         else:
-            self.error_reporter.error(
+            self.error_reporter.error_line(
                 self.line,
                 "identifiers cannot start with '#'")
 
@@ -309,11 +309,11 @@ if __name__ == '__main__':
     from .error_reporter import ErrorReporter
 
     # print("""  "\\""  """)
-    scanner = Scanner("""1.1.2 1..2""", ErrorReporter())
+    scanner = Scanner("""(+ 1 2)""", ErrorReporter())
 
     scanner.scan_tokens()
 
     for token in scanner.tokens:
-        print(f"token: {token.to_string()}")
+        print(f"token: {str(token)}")
 
     print("end")
