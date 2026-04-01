@@ -2,12 +2,9 @@
 from typing import List
 from .token_type import TokenType
 from .bsl_token import BslToken
-from fractions import Fraction
 import re
-from .numbers import ScientificNotation
-from .numbers import Complex
-from .regular_expressions import EXACT_REAL
-
+from .numbers import parse_number_token
+from .regular_expressions import COMPLEX_LITERAL_RE, EXACT_REAL
 
 class Scanner:
     """Create Object to scan source code."""
@@ -106,15 +103,8 @@ class Scanner:
         text = self.source[self.start: self.current]
 
         if type == TokenType.NUMBER:
-            if self.is_complex_number(text):
-                self.tokens.append(
-                    BslToken(type, text, Complex(text), self.line))
-            elif self.is_scientific_notation(text):
-                self.tokens.append(
-                    BslToken(type, text, ScientificNotation(text), self.line))
-            else:
-                self.tokens.append(
-                    BslToken(type, text, Fraction(text), self.line))
+            self.tokens.append(
+                BslToken(type, text, parse_number_token(text), self.line))
             return
 
         self.tokens.append(BslToken(type, text, literal, self.line))
@@ -254,7 +244,7 @@ class Scanner:
 
     def is_complex_number(self, text) -> bool:
         """Return true if text is a valid complex number."""
-        return re.fullmatch(rf"([+-]?({EXACT_REAL})?)([+-]({EXACT_REAL})?)i", text) is not None
+        return re.fullmatch(COMPLEX_LITERAL_RE, text) is not None
 
     def report_surrogate_error(self, literal: str) -> None:
         """Report a surrogate error."""
@@ -309,7 +299,7 @@ if __name__ == '__main__':
     from .error_reporter import ErrorReporter
 
     # print("""  "\\""  """)
-    scanner = Scanner("""(+ 1 2)""", ErrorReporter())
+    scanner = Scanner("""1+0i""", ErrorReporter())
 
     scanner.scan_tokens()
 

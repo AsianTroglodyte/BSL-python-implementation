@@ -8,18 +8,6 @@ class Expr:
     pass
 
 
-# function calls: pretty much all procedures in BSL
-@dataclass
-class ProcedureCall(Expr):
-    """
-    Represent any procedure call such as '+' or some other user-defined
-    procedure.
-    """
-    callee: Expr
-    args: tuple[Expr]
-    token: BslToken
-
-
 # strings, numbers, booleans, and Identifiers
 @dataclass
 class Literal(Expr):
@@ -33,3 +21,15 @@ class Variable(Expr):
     """Stores variable name."""
 
     name: BslToken
+
+
+# function calls: pretty much all procedures in BSL
+@dataclass
+class ProcedureCall(Expr):
+    """
+    Represent any procedure call such as '+' or some other user-defined
+    procedure.
+    """
+    callee: Variable
+    args: tuple[Expr]
+    token: BslToken

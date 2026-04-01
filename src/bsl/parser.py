@@ -40,7 +40,7 @@ class Parser:
         """Parse one top-level expression with panic-mode recovery."""
         try:
             return self.expression()
-        except parser.ParseError:
+        except self.ParseError:
             self.synchronize()
             return None
 
@@ -56,7 +56,7 @@ class Parser:
                 TokenType.FALSE]:
             return self.primary()
         else:
-            self.error_reporter.error_token(self.peek(), "Expect expression.")
+            self.error(self.peek(), "Expect expression.")
 
     def procedure_call(self):
         """Parse a possible procedure call."""
@@ -65,6 +65,8 @@ class Parser:
         args: List[BslToken] = []
 
         callee = self.primary()
+        if not isinstance(callee, Variable):
+            self.error(self.previous(), "Expect Variable")
 
         # first check if the call has no arguments by checking if current
         # TokenType has no RIGHT_PAREN
@@ -80,7 +82,6 @@ class Parser:
         # we use paren to record error reporting information.
         # We also use consume as it will throw an error if the next TokenType
         # is NOT RIGHT_PAREN
-        # print("final args: ", args)
         paren = self.consume(
             TokenType.RIGHT_PAREN,
             "Expect ')' after arguments.")
@@ -109,14 +110,13 @@ class Parser:
             if (self.check(token_type)):
                 self.advance()
                 return True
-
         return False
 
     def consume(self, token_type: TokenType, message: str) -> BslToken:
         """Consume expected token or raise parse error."""
         if (self.check(token_type)):
             return self.advance()
-        raise self.error_reporter.error_token(self.peek(), message)
+        raise self.error(self.peek(), message)
 
     def synchronize(self) -> None:
         """Enter panic mode and advance to likely statement boundary."""
@@ -172,19 +172,19 @@ if __name__ == '__main__':
     """(IDENTIFIER )"""
 
     # scanner = Scanner("""(+ (+ 1 2(+ 1 2 3)) (- 1 1 2 3 4))""", ErrorReporter())
-    scanner = Scanner("""if (+ 1 2)""", ErrorReporter())
+    scanner = Scanner("""(1 1 2)""", ErrorReporter())
     scanner.scan_tokens()
     tokens = scanner.tokens
 
     parser = Parser(tokens, ErrorReporter())
     ast = parser.parse()
+    print(ast)
 
-    if ast is not None:
-        print(ast)
+    # if ast is not None:
 
-        pprint(asdict(ast), width=100, sort_dicts=False)
+    #     pprint(asdict(ast), width=100, sort_dicts=False)
 
-        for token in tokens:
-            print(token)
+    #     for token in tokens:
+    #         print(token)
 
 # def run_quick_test():

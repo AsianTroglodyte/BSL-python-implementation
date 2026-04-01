@@ -3,7 +3,7 @@ from bsl.token_type import TokenType
 from bsl.error_reporter import ErrorReporter
 from bsl.scanner import Scanner
 from fractions import Fraction
-from bsl.numbers import Complex, ScientificNotation
+from bsl.numbers import Complex
 from bsl.bsl_token import BslToken
 import pytest
 
@@ -158,9 +158,8 @@ def test_abutted_scientific_notation_then_paren():
     assert scanner.tokens[0].type == TokenType.NUMBER
     assert scanner.tokens[0].lexeme == "1/2e4"
     lit = scanner.tokens[0].literal
-    assert isinstance(lit, ScientificNotation)
-    assert lit.base == Fraction(1, 2)
-    assert lit.exponent == 4
+    assert isinstance(lit, Fraction)
+    assert lit == Fraction(5000)
     assert scanner.tokens[1].type == TokenType.RIGHT_PAREN
     assert scanner.tokens[2].type == TokenType.EOF
 
@@ -387,28 +386,27 @@ def test_fractions_invalid(src):
     assert token.line == 1
 
 
-@pytest.mark.parametrize("lexeme,expected_base,expected_exponent", [
-    ("1e4", Fraction("1"), 4),
-    ("10e-4", Fraction("10"), -4),
-    ("1.23e4", Fraction("1.23"), 4),
-    ("1.23e-4", Fraction("1.23"), -4),
-    ("1.23E+4", Fraction("1.23"), 4),
-    ("0e0", Fraction("0"), 0),
-    ("12E0", Fraction("12"), 0),
-    ("001e02", Fraction("1"), 2),
-    ("1.e4", Fraction("1."), 4),
-    (".5e4", Fraction(".5"), 4),
-    ("-1e4", Fraction("-1"), 4),
-    ("+1e4", Fraction("+1"), 4),
-    ("1/2e4", Fraction(1, 2), 4),
+@pytest.mark.parametrize("lexeme,expected", [
+    ("1e4", Fraction(10000)),
+    ("10e-4", Fraction(1, 1000)),
+    ("1.23e4", Fraction(12300)),
+    ("1.23e-4", Fraction(123, 1_000_000)),
+    ("1.23E+4", Fraction(12300)),
+    ("0e0", Fraction(0)),
+    ("12E0", Fraction(12)),
+    ("001e02", Fraction(100)),
+    ("1.e4", Fraction(10000)),
+    (".5e4", Fraction(5000)),
+    ("-1e4", Fraction(-10000)),
+    ("+1e4", Fraction(10000)),
+    ("1/2e4", Fraction(5000)),
 ])
-def test_scientific_notation_valid(lexeme, expected_base, expected_exponent):
+def test_scientific_notation_valid(lexeme, expected):
     token = scan_single_lexeme(lexeme)
     assert token.type == TokenType.NUMBER
     assert token.lexeme == lexeme
-    assert isinstance(token.literal, ScientificNotation)
-    assert token.literal.base == expected_base
-    assert token.literal.exponent == expected_exponent
+    assert isinstance(token.literal, Fraction)
+    assert token.literal == expected
     assert token.line == 1
 
 
@@ -433,19 +431,31 @@ def test_scientific_notation_invalid(lexeme):
     assert token.line == 1
 
 
+@pytest.mark.parametrize("lexeme,expected", [
+    ("1+0i", Fraction(1)),
+    ("1-0i", Fraction(1)),
+    ("0+0i", Fraction(0)),
+    ("0-0i", Fraction(0)),
+])
+def test_complex_form_zero_imaginary_is_fraction(lexeme, expected):
+    """Complex-shaped literals with imaginary 0 normalize to a plain Fraction."""
+    token = scan_single_lexeme(lexeme)
+    assert token.type == TokenType.NUMBER
+    assert token.lexeme == lexeme
+    assert isinstance(token.literal, Fraction)
+    assert token.literal == expected
+    assert token.line == 1
+
+
 @pytest.mark.parametrize("lexeme,real_part,imaginary_part", [
     ("1+2i", Fraction("1"), Fraction("2")),
     ("1-2i", Fraction("1"), Fraction("-2")),
     ("1+i", Fraction("1"), Fraction("1")),
     ("1-i", Fraction("1"), Fraction("-1")),
-    ("1+0i", Fraction("1"), Fraction("0")),
-    ("1-0i", Fraction("1"), Fraction("0")),
     ("+2i", Fraction("0"), Fraction("2")),
     ("-2i", Fraction("0"), Fraction("-2")),
     ("0+1i", Fraction("0"), Fraction("1")),
     ("0-1i", Fraction("0"), Fraction("-1")),
-    ("0+0i", Fraction("0"), Fraction("0")),
-    ("0-0i", Fraction("0"), Fraction("0")),
     ("-i", Fraction("0"), Fraction("-1")),
     ("+i", Fraction("0"), Fraction("1")),
 ])
@@ -549,9 +559,8 @@ def test_scan_integration_mixed_tokens():
     assert toks[4].literal is False
 
     assert toks[5].type == TokenType.NUMBER and toks[5].lexeme == "3.14e-2"
-    assert isinstance(toks[5].literal, ScientificNotation)
-    assert toks[5].literal.base == Fraction("3.14")
-    assert toks[5].literal.exponent == -2
+    assert isinstance(toks[5].literal, Fraction)
+    assert toks[5].literal == Fraction(157, 5000)
 
     assert toks[6].type == TokenType.LEFT_BRACK and toks[6].lexeme == "["
     assert toks[7].type == TokenType.IDENTIFIER and toks[7].lexeme == "a"
