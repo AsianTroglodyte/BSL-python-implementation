@@ -7,8 +7,19 @@ from .ast_printer import print_ast
 from .token_type import TokenType
 from fractions import Fraction
 from .numbers import Complex
+from .runtime_error import BslRuntimeError
 
-def interpret(expression: Expr):
+
+def interpret(expressions: [Expr]):
+    """Interpreter multiple expressions in a program."""
+    try:
+        for expression in expressions:
+            print(f"execute(expression){execute(expression)}")
+    except BslRuntimeError:
+        raise BslRuntimeError()
+
+
+def execute(expression: Expr):
     """Interpret/evaluate a given expression."""
 
     match expression:
@@ -16,13 +27,20 @@ def interpret(expression: Expr):
             return value
         case Variable(name=name):
             return name.lexeme
+        # case DefineVar(name=name, value=value):
+        #     return name.lexeme
+        # case DefineProc(name=name, value=value):
+        #     return
         case ProcedureCall(callee=callee, args=args, token=_):
             if callee.name.lexeme == "+":
                 return add(args)
-            if callee.name.lexeme == "-":
+            elif callee.name.lexeme == "-":
                 return minus(args)
-            if callee.name.lexeme == "*":
+            elif callee.name.lexeme == "*":
                 return multiplication(args)
+
+
+# TODO: Implement all the BSL special forms
 
 
 # TODO: Implement the following as proper BSL functions 
@@ -30,14 +48,14 @@ def add(args: [Expr]) -> Literal:
     """Add a list of numbers together."""
     accumulator = 0
     for arg in args:
-        accumulator += interpret(arg)
+        accumulator += execute(arg)
     return accumulator
 
 
 def minus(args: [Expr]) -> Literal:
     """Subtracts a list of numbers by each other."""
     if len(args) == 1:
-        return -interpret(args[0])
+        return -execute(args[0])
 
     # first arg is minused from every argument after thus we initialize the
     # accumulator with the first arg then pop it
@@ -45,7 +63,7 @@ def minus(args: [Expr]) -> Literal:
     args.pop(0)
 
     for arg in args:
-        accumulator -= interpret(arg)
+        accumulator -= execute(arg)
     return accumulator
 
 
@@ -53,22 +71,26 @@ def multiplication(args: [Expr]) -> object:
     """Multiplies a list of number together."""
     accumulator = 1
     for arg in args:
-        accumulator *= interpret(arg)
+        accumulator *= execute(arg)
     return accumulator
 
 
 if __name__ == "__main__":
-    # scanner = Scanner("""(+ 1 2 (+ 1 2))""", ErrorReporter())
-    scanner = Scanner("""(+ 1 1 (- 1 1) (* 2 2 2))""", ErrorReporter())
+    scanner = Scanner("""(define x 1)""", ErrorReporter())
+    # scanner = Scanner("""(+ 1 1 (- 1 1) (* 2 2 2)) (+ 1 1)""",
+    # ErrorReporter())
     scanner.scan_tokens()
     tokens = scanner.tokens
+    print(tokens)
 
     parser = Parser(tokens, ErrorReporter())
-    ast = parser.parse()
+    expressions = parser.parse()
+    print(expressions)
 
-    print(print_ast(ast))
+    for expression in expressions:
+        print(print_ast(expression))
 
-    print(interpret(ast))
+    interpret(expressions)
 
     # for token in tokens:
     #     print(token)

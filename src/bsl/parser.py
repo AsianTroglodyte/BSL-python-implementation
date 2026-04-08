@@ -4,7 +4,7 @@ from typing import List
 from .scanner import Scanner
 from .error_reporter import ErrorReporter
 from .token_type import TokenType
-from .ast import ProcedureCall, Literal, Variable
+from .ast import ProcedureCall, Literal, Variable, DefineVar, DefineProc, Logical, Cond
 
 
 class Parser:
@@ -38,16 +38,40 @@ class Parser:
 
     def parse(self):
         """Parse one top-level expression with panic-mode recovery."""
-        try:
-            return self.expression()
-        except self.ParseError:
-            self.synchronize()
-            return None
+        expressions = []
+
+        while not self.isAtEnd():
+            try:
+                expressions.append(self.expression())
+                # print(f"expression: {expressions}")
+            except self.ParseError:
+                self.synchronize()
+                return None
+
+        return expressions
 
     def expression(self):
         """Everything in BSL is an expression."""
         if self.match([TokenType.LEFT_PAREN]):
-            return self.procedure_call()
+            # The following handle special forms. They have special structures
+            # and have special evaluations rules.
+            # Do NOT use match() because procedure call must call primary()
+            # to consume and store the
+            if self.match([TokenType.COND]):
+                return self.cond()
+            elif self.match([TokenType.DEFINE]):
+                return self.define()
+            elif self.match([TokenType.AND]) or self.match([TokenType.OR]):
+                return self.logical()
+            # regular user-defined or built in functions are handled by
+            # this code path
+            elif self.match([TokenType.IDENTIFIER]):
+                return self.procedure_call()
+            # a LEFT_PAREN is always followed up
+            # with some IDENTIFIER or "keyword"
+            else:
+                self.error(self.peek(), "function call: expected a function" \
+                           "after the open parenthesis, but found a part")
         elif self.peek().type in [
                 TokenType.IDENTIFIER,
                 TokenType.STRING,
@@ -60,8 +84,6 @@ class Parser:
 
     def procedure_call(self):
         """Parse a possible procedure call."""
-        # self.advance()
-
         args: List[BslToken] = []
 
         callee = self.primary()
@@ -73,7 +95,6 @@ class Parser:
         if not self.check(TokenType.RIGHT_PAREN):
             while True:
                 args.append(self.expression())
-                # print("args: ", args)
                 if self.peek().type == TokenType.RIGHT_PAREN:
                     break
                 elif self.peek().type == TokenType.EOF:
@@ -87,6 +108,42 @@ class Parser:
             "Expect ')' after arguments.")
 
         return ProcedureCall(callee, args, paren)
+
+    def define(self):
+        """Parse through a define expression/special form."""
+
+        name = self.consume(
+            TokenType.IDENTIFIER, "define: expected a" \
+            "variable name, or a function name and its variables (in" \
+            f"parentheses), but found a {self.peek().type}")
+
+        value = self.expression()
+
+        self.consume(TokenType.RIGHT_PAREN,
+                     "read-syntax: expected a `)` to close `(`")
+
+        return DefineVar(name, value)
+
+    def cond(self):
+        """Evaluate Cond expressions, special forms."""
+        args = ()
+
+        return Cond(args)
+
+    # named as such because "and" is a reserved word
+    def logical(self):
+        """Evaluate "and" expressions, special forms."""
+        args = [BslToken]
+
+        if not self.check(TokenType.RIGHT_PAREN):
+            while True:
+                args.append(self.expression())
+                # print("args: ", args)
+                if self.peek().type == TokenType.RIGHT_PAREN:
+                    break
+                elif self.peek().type == TokenType.EOF:
+                    break
+        return Logical(args)
 
     def primary(self):
         """Parse literals, expressions, and identifiers."""
@@ -102,9 +159,8 @@ class Parser:
             return Variable(self.previous())
 
     def match(self, types: List[TokenType]) -> bool:
-        """
-        Check if current token has any of the given type.
-        If so it consumes the token and returns true.
+        """Check if current token has any of the given type. If so it consumes
+        the token and returns true.
         """
         for token_type in types:
             if (self.check(token_type)):
@@ -162,7 +218,10 @@ class Parser:
         if token.type == TokenType.EOF:
             self.error_reporter.report(token.line, " at end", message)
         else:
-            self.error_reporter.report(token.line, f" at '{token.lexeme}'", message)
+            self.error_reporter.report(
+                token.line,
+                f" at '{token.lexeme}'",
+                message)
         return self.ParseError()
 
 
@@ -172,19 +231,21 @@ if __name__ == '__main__':
     """(IDENTIFIER )"""
 
     # scanner = Scanner("""(+ (+ 1 2(+ 1 2 3)) (- 1 1 2 3 4))""", ErrorReporter())
-    scanner = Scanner("""(1 1 2)""", ErrorReporter())
+    scanner = Scanner("""(define abc 1 )""", ErrorReporter())
     scanner.scan_tokens()
     tokens = scanner.tokens
+    for token in tokens:
+        print(token)
 
     parser = Parser(tokens, ErrorReporter())
     ast = parser.parse()
     print(ast)
 
-    # if ast is not None:
+    if ast is not None:
 
-    #     pprint(asdict(ast), width=100, sort_dicts=False)
+        pprint(asdict(ast), width=100, sort_dicts=False)
 
-    #     for token in tokens:
-    #         print(token)
+        for token in tokens:
+            print(token)
 
 # def run_quick_test():

@@ -96,7 +96,22 @@ class Scanner:
 
     def add_non_literal_token(self, type: TokenType):
         """Add a non-literal token given a TokenType and."""
-        self.add_literal_token(type, None)
+        text = self.source[self.start: self.current]
+
+        # I know. It's weird to call add_literal_token in this functions,
+        # but it's the best I could muster
+        if text == "cond":
+            self.add_literal_token(TokenType.COND, None)
+        elif text == "define":
+            self.add_literal_token(TokenType.DEFINE, None)
+        elif text == "else":
+            self.add_literal_token(TokenType.ELSE, None)
+        elif text == "or":
+            self.add_literal_token(TokenType.OR, None)
+        elif text == "and":
+            self.add_literal_token(TokenType.AND, None)
+        else:
+            self.add_literal_token(type, None)
 
     def add_literal_token(self, type: TokenType, literal: object):
         """Add a token for a literal given a TokenType and a literal object."""
@@ -299,8 +314,8 @@ if __name__ == '__main__':
     from .error_reporter import ErrorReporter
 
     # print("""  "\\""  """)
-    scanner = Scanner("""1+0i""", ErrorReporter())
-
+    scanner = Scanner("""(or (and 1 1 1) or or) """, ErrorReporter())
+    # scanner = Scanner("""1 2 3 """, ErrorReporter())
     scanner.scan_tokens()
 
     for token in scanner.tokens:

@@ -24,7 +24,11 @@ class TokenType(Enum):
     # Keywords.
     TRUE = 13
     FALSE = 14
-    IF = 15
-    COND = 16
+    COND = 15
+    IF = 16
+    DEFINE = 17
+    ELSE = 18
+    OR = 19
+    AND = 20
 
-    EOF = 17
+    EOF = 21

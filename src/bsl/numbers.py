@@ -67,6 +67,7 @@ class Complex:
         self.imaginary_part = Fraction(imaginary_part)
 
     def __add__(self, other):
+        """Add Fraction and Complex Numbers to the Complex number."""
         if isinstance(other, Fraction):
             return Complex.from_parts(self.real_part + other,
                                       self.imaginary_part)
@@ -76,6 +77,7 @@ class Complex:
                 self.imaginary_part + self.imaginary_part)
 
     def __radd__(self, other):
+        """Add Fraction Complex number."""
         if isinstance(other, (Fraction, int)):
             return Complex.from_parts(self.real_part + other,
                                       self.imaginary_part)
