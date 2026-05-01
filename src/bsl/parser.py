@@ -15,6 +15,7 @@ class Parser:
     tokens: List[BslToken]
     current: int = 0
     error_reporter: ErrorReporter
+    left_parens_remaining: int = 0
 
     class ParseError(RuntimeError):
         """Sentinel exception used to unwind parser during panic mode."""
@@ -45,6 +46,7 @@ class Parser:
                 expressions.append(self.expression())
                 # print(f"expression: {expressions}")
             except self.ParseError:
+                break
                 self.synchronize()
                 return None
 
@@ -53,10 +55,9 @@ class Parser:
     def expression(self):
         """Everything in BSL is an expression."""
         if self.match([TokenType.LEFT_PAREN]):
+            self.left_parens_remaining += 1
             # The following handle special forms. They have special structures
             # and have special evaluations rules.
-            # Do NOT use match() because procedure call must call primary()
-            # to consume and store the
             if self.match([TokenType.COND]):
                 return self.cond()
             elif self.match([TokenType.DEFINE]):
@@ -64,14 +65,18 @@ class Parser:
             elif self.match([TokenType.AND]) or self.match([TokenType.OR]):
                 return self.logical()
             # regular user-defined or built in functions are handled by
-            # this code path
-            elif self.match([TokenType.IDENTIFIER]):
+            # this code path. do NOT use
+            # Do NOT use match() because procedure call must call primary()
+            # to consume and store the
+            elif self.peek().type == TokenType.IDENTIFIER:
                 return self.procedure_call()
             # a LEFT_PAREN is always followed up
             # with some IDENTIFIER or "keyword"
             else:
-                self.error(self.peek(), "function call: expected a function" \
-                           "after the open parenthesis, but found a part")
+                raise self.error(self.peek(),
+                                 "application: not a procedure; \n"
+                                 "expected a procedure that can be applied to \n"
+                                 "arguments\ngiven: ")
         elif self.peek().type in [
                 TokenType.IDENTIFIER,
                 TokenType.STRING,
@@ -80,7 +85,10 @@ class Parser:
                 TokenType.FALSE]:
             return self.primary()
         else:
-            self.error(self.peek(), "Expect expression.")
+            # we know that the current token is invalid
+            # note that we must still consume it as we will attempt
+            # to continue parsing to continue catching more errors
+            raise self.error(self.peek(), "Expect expression.")
 
     def procedure_call(self):
         """Parse a possible procedure call."""
@@ -88,16 +96,21 @@ class Parser:
 
         callee = self.primary()
         if not isinstance(callee, Variable):
-            self.error(self.previous(), "Expect Variable")
+            raise self.error(self.peek(), "Expect Variable")
 
         # first check if the call has no arguments by checking if current
         # TokenType has no RIGHT_PAREN
         if not self.check(TokenType.RIGHT_PAREN):
             while True:
                 args.append(self.expression())
-                if self.peek().type == TokenType.RIGHT_PAREN:
+                if self.match([TokenType.RIGHT_PAREN]):
+                    self.left_parens_remaining -= 1
                     break
                 elif self.peek().type == TokenType.EOF:
+                    raise self.error(self.peek(),
+                               """
+                               read-syntax: expected a ')' to close '('
+                               """)
                     break
 
         # we use paren to record error reporting information.
@@ -107,11 +120,12 @@ class Parser:
             TokenType.RIGHT_PAREN,
             "Expect ')' after arguments.")
 
+        self.left_parens_remaining -= 1
+
         return ProcedureCall(callee, args, paren)
 
     def define(self):
         """Parse through a define expression/special form."""
-
         name = self.consume(
             TokenType.IDENTIFIER, "define: expected a" \
             "variable name, or a function name and its variables (in" \
@@ -121,7 +135,7 @@ class Parser:
 
         self.consume(TokenType.RIGHT_PAREN,
                      "read-syntax: expected a `)` to close `(`")
-
+        self.left_parens_remaining -= 1
         return DefineVar(name, value)
 
     def cond(self):
@@ -139,10 +153,13 @@ class Parser:
             while True:
                 args.append(self.expression())
                 # print("args: ", args)
-                if self.peek().type == TokenType.RIGHT_PAREN:
+                if self.match([TokenType.RIGHT_PAREN]):
+                    self.left_parens_remaining -= 1
                     break
                 elif self.peek().type == TokenType.EOF:
+                    raise self.error(self.peek(), "bruh")
                     break
+
         return Logical(args)
 
     def primary(self):
@@ -151,16 +168,15 @@ class Parser:
             return Literal(False)
         if self.match([TokenType.TRUE]):
             return Literal(True)
-
         if self.match([TokenType.NUMBER, TokenType.STRING]):
             return Literal(self.previous().literal)
-
         if self.match([TokenType.IDENTIFIER]):
             return Variable(self.previous())
 
     def match(self, types: List[TokenType]) -> bool:
-        """Check if current token has any of the given type. If so it consumes
-        the token and returns true.
+        """
+        Check if current token has any of the given type.
+        If so it consumes the token and returns true.
         """
         for token_type in types:
             if (self.check(token_type)):
@@ -177,14 +193,15 @@ class Parser:
     def synchronize(self) -> None:
         """Enter panic mode and advance to likely statement boundary."""
         self.advance()
-
         while not self.isAtEnd():
-            if self.previous().type == TokenType.SEMICOLON:
+            if self.left_parens_remaining == 0:
                 return
-
-            if self.peek().type in (TokenType.IF, TokenType.COND):
-                return
-
+            if self.previous().type == TokenType.LEFT_PAREN:
+                self.left_parens_remaining += 1
+                continue
+            if self.previous().type == TokenType.RIGHT_PAREN:
+                self.left_parens_remaining -= 1
+                continue
             self.advance()
 
     def check(self, token_type: TokenType) -> bool:
@@ -226,12 +243,12 @@ class Parser:
 
 
 if __name__ == '__main__':
-    from pprint import pprint
-    from dataclasses import asdict
+    # from pprint import pprint
+    # from dataclasses import asdict
     """(IDENTIFIER )"""
 
     # scanner = Scanner("""(+ (+ 1 2(+ 1 2 3)) (- 1 1 2 3 4))""", ErrorReporter())
-    scanner = Scanner("""(define abc 1 )""", ErrorReporter())
+    scanner = Scanner("""(12)""", ErrorReporter())
     scanner.scan_tokens()
     tokens = scanner.tokens
     for token in tokens:
@@ -243,7 +260,7 @@ if __name__ == '__main__':
 
     if ast is not None:
 
-        pprint(asdict(ast), width=100, sort_dicts=False)
+        # pprint(asdict(ast), width=100, sort_dicts=False)
 
         for token in tokens:
             print(token)

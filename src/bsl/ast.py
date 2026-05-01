@@ -2,6 +2,8 @@
 from dataclasses import dataclass
 from .bsl_token import BslToken
 
+
+@dataclass
 class Expr:
     """Shared class to add more type information and errors."""
 
@@ -48,9 +50,10 @@ class DefineVar(SpecialForm):
     """Create the Define AST node."""
 
     name: BslToken
-    value: Expr
+    initializer: Expr
 
 
+@dataclass
 class DefineProc(SpecialForm):
     """Create the AST node for defining a procedure."""
 
